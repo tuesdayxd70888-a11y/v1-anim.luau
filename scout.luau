@@ -1,9 +1,9 @@
--- [[ Scout Movement Override Suite: Pro Edition ]] --
-
+-- [[ Scout Movement Override Suite: Stable Edition ]] --
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
-local MOVEMENT_CATALOG_IDS = {
+-- ใช้ URL เต็มของคุณได้เลย สคริปต์จะดึง ID ให้เอง
+local SCOUT_ANIMATIONS = {
     Idle  = "rbxassetid://80143328896830",
     Walk  = "rbxassetid://129822566445023",
     Run   = "rbxassetid://110208399858856",
@@ -13,27 +13,57 @@ local MOVEMENT_CATALOG_IDS = {
     Swim  = "rbxassetid://89995257414409"
 }
 
+-- ฟังก์ชันดึง ID แท้ (สำคัญมาก)
+local function GetRawID(assetId)
+    local success, id = pcall(function()
+        return game:GetObjects(assetId)[1].AnimationId
+    end)
+    return success and id or assetId
+end
+
 local function InjectScoutAnimations(character)
-    -- [1] Ensure critical components exist
     local humanoid = character:WaitForChild("Humanoid", 10)
-    local animator = humanoid:WaitForChild("Animator", 10)
     local animateScript = character:WaitForChild("Animate", 10)
     
     if not humanoid or not animateScript then return end
 
-    -- [2] Helper: Update and set Priority
-    local function setAnim(name, childName, animId)
+    -- อัปเดต ID ให้อยู่ในรูปแบบที่ถูกต้องก่อนใช้งาน
+    local function setAnim(name, childName, rawId)
         local container = animateScript:FindFirstChild(name)
         if container then
             local animTarget = container:FindFirstChild(childName)
             if animTarget and animTarget:IsA("Animation") then
-                animTarget.AnimationId = animId
+                animTarget.AnimationId = rawId
             end
         end
     end
 
-    -- [3] Apply Animations
-    setAnim("idle", "Animation1", MOVEMENT_CATALOG_IDS.Idle)
+    -- แปลงและตั้งค่า
+    setAnim("idle", "Animation1", GetRawID(SCOUT_ANIMATIONS.Idle))
+    setAnim("idle", "Animation2", GetRawID(SCOUT_ANIMATIONS.Idle))
+    setAnim("walk", "WalkAnim", GetRawID(SCOUT_ANIMATIONS.Walk))
+    setAnim("run", "RunAnim", GetRawID(SCOUT_ANIMATIONS.Run))
+    setAnim("jump", "JumpAnim", GetRawID(SCOUT_ANIMATIONS.Jump))
+    setAnim("fall", "FallAnim", GetRawID(SCOUT_ANIMATIONS.Fall))
+    setAnim("climb", "ClimbAnim", GetRawID(SCOUT_ANIMATIONS.Climb))
+    setAnim("swim", "Swim", GetRawID(SCOUT_ANIMATIONS.Swim))
+
+    -- รีเซ็ต Animate Script ให้โหลดค่าใหม่
+    animateScript.Disabled = true
+    task.wait(0.2)
+    animateScript.Disabled = false
+    
+    print("[Scout Suite]: Successfully injected and refreshed.")
+end
+
+-- ระบบเชื่อมต่อ character
+local function Setup(char)
+    task.wait(1) -- รอ rig โหลดเสร็จสนิท
+    InjectScoutAnimations(char)
+end
+
+if LocalPlayer.Character then Setup(LocalPlayer.Character) end
+LocalPlayer.CharacterAdded:Connect(Setup)
     setAnim("idle", "Animation2", MOVEMENT_CATALOG_IDS.Idle)
     setAnim("walk", "WalkAnim", MOVEMENT_CATALOG_IDS.Walk)
     setAnim("run", "RunAnim", MOVEMENT_CATALOG_IDS.Run)
