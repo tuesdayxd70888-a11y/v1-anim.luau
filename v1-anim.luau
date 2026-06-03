@@ -1,8 +1,7 @@
--- [[ V1 Movement System - Final Working Version ]] --
+-- [[ V1 Movement System - Optimized Version ]] --
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- ใส่ ID หน้าเว็บปกติได้เลย เดี๋ยวสคริปต์จัดการดึง Raw ID ให้เอง
 local V1_ANIMATIONS = {
     Idle  = "rbxassetid://109752457660298",
     Walk  = "rbxassetid://103979922296239",
@@ -13,7 +12,9 @@ local V1_ANIMATIONS = {
     Swim  = "rbxassetid://77140283527772"
 }
 
--- ฟังก์ชันดึง Raw ID (ตัวที่สคริปต์ Animate ต้องการจริงๆ)
+-- เพิ่มตัวแปรเช็คสถานะการ Inject
+local isInjected = false
+
 local function GetRawAnimationId(catalogId)
     local success, objects = pcall(function() return game:GetObjects(catalogId) end)
     if success and objects and objects[1] then
@@ -21,17 +22,19 @@ local function GetRawAnimationId(catalogId)
         local anim = objects[1]:FindFirstChildWhichIsA("Animation", true)
         if anim then return anim.AnimationId end
     end
-    return catalogId -- ถ้าดึงไม่ได้ ให้ใช้ค่าเดิม
+    return catalogId
 end
 
 local function InjectV1Animations(character)
+    -- ถ้าเคย Inject ไปแล้ว ให้ข้ามไปเลย ไม่ต้องโหลดซ้ำ
+    if isInjected then return end
+    
     local animateScript = character:WaitForChild("Animate", 10)
     local humanoid = character:WaitForChild("Humanoid", 10)
     if not animateScript or not humanoid then return end
 
     animateScript.Disabled = true
 
-    -- แปลงทุก ID ให้เป็น Raw ID ก่อนเอาไปใส่
     for name, id in pairs(V1_ANIMATIONS) do
         V1_ANIMATIONS[name] = GetRawAnimationId(id)
     end
@@ -53,18 +56,14 @@ local function InjectV1Animations(character)
     Replace("climb", "ClimbAnim", V1_ANIMATIONS.Climb)
     Replace("swim", "SwimAnim", V1_ANIMATIONS.Swim)
 
-    -- รีเซ็ต Animator เพื่อให้มันอ่านค่าใหม่
-    local animator = humanoid:FindFirstChildOfClass("Animator")
-    if animator then
-        for _, track in ipairs(animator:GetPlayingAnimationTracks()) do track:Stop(0) end
-    end
-
     animateScript.Disabled = false
+    isInjected = true -- ล็อกสถานะว่ารันเสร็จสิ้นแล้ว
     print("V1 Movement Injected Successfully!")
 end
 
-if LocalPlayer.Character then InjectV1Animations(LocalPlayer.Character) end
-LocalPlayer.CharacterAdded:Connect(function(char)
-    task.wait(0.5)
-    InjectV1Animations(char)
-end)
+-- รันครั้งเดียวเมื่อสคริปต์ทำงาน
+if LocalPlayer.Character then 
+    InjectV1Animations(LocalPlayer.Character) 
+end
+
+-- ตัดการฟัง CharacterAdded ทิ้ง เพื่อไม่ให้มันโหลดซ้ำตอนเกิดใหม่
